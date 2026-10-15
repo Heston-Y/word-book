@@ -70,6 +70,26 @@ function toast(msg) {
   toastTimer = setTimeout(() => el.classList.remove('show'), 1800);
 }
 
+// 브라우저 기본 confirm() 대신 쓰는 페이지 내 확인 창
+function ask(message) {
+  const dlg = $('#ask');
+  $('#ask-msg').textContent = message;
+  dlg.hidden = false;
+  $('#ask-ok').focus();
+  return new Promise(resolve => {
+    const done = ok => {
+      dlg.hidden = true;
+      dlg.onclick = document.onkeydown = null;
+      resolve(ok);
+    };
+    dlg.onclick = e => {
+      if (e.target.id === 'ask-ok') done(true);
+      else if (e.target.id === 'ask-cancel' || e.target === dlg) done(false);
+    };
+    document.onkeydown = e => { if (e.key === 'Escape') done(false); };
+  });
+}
+
 function speak(text) {
   if (!('speechSynthesis' in window)) return toast('이 브라우저는 발음 듣기를 지원하지 않아요');
   speechSynthesis.cancel();
@@ -111,7 +131,7 @@ function showView(name) {
 // ---------- 단어장 ----------
 const form = $('#word-form');
 
-form.addEventListener('submit', e => {
+form.addEventListener('submit', async e => {
   e.preventDefault();
   const data = Object.fromEntries(new FormData(form));
   if (data.wid) {
@@ -120,7 +140,7 @@ form.addEventListener('submit', e => {
     toast('수정했어요');
   } else {
     const dup = state.words.find(x => x.word.toLowerCase() === data.word.trim().toLowerCase());
-    if (dup && !confirm(`"${dup.word}"는 이미 있어요. 그래도 추가할까요?`)) return;
+    if (dup && !await ask(`"${dup.word}"는 이미 있어요. 그래도 추가할까요?`)) return;
     state.words.unshift(makeWord(data.word, data.meaning, data.example));
     toast('추가했어요');
   }
@@ -194,7 +214,7 @@ function renderList() {
     </li>`).join('');
 }
 
-$('#word-list').addEventListener('click', e => {
+$('#word-list').addEventListener('click', async e => {
   const btn = e.target.closest('[data-act]');
   if (!btn) return;
   const id = btn.closest('.word-item').dataset.id;
@@ -205,7 +225,7 @@ $('#word-list').addEventListener('click', e => {
     case 'speak': speak(w.word); break;
     case 'edit': editWord(id); break;
     case 'delete':
-      if (confirm(`"${w.word}"를 삭제할까요?`)) {
+      if (await ask(`"${w.word}"를 삭제할까요?`)) {
         state.words = state.words.filter(x => x.id !== id);
         save(); renderList();
       }
@@ -215,6 +235,8 @@ $('#word-list').addEventListener('click', e => {
 
 // 가져오기 / 내보내기
 $('#import-btn').addEventListener('click', () => {
+  const raw = $('#import-text').value.trim();
+  if (raw.startsWith('{')) return restoreBackup(raw);
   const lines = $('#import-text').value.split('\n').map(l => l.trim()).filter(Boolean);
   let added = 0;
   for (const line of lines) {
@@ -238,26 +260,43 @@ $('#export-btn').addEventListener('click', () => {
   URL.revokeObjectURL(a.href);
 });
 
+$('#copy-btn').addEventListener('click', () => {
+  const text = JSON.stringify(state);
+  navigator.clipboard.writeText(text)
+    .then(() => toast('클립보드에 복사했어요'))
+    .catch(() => {
+      const ta = $('#import-text');
+      ta.value = text;
+      ta.select();
+      toast('아래 칸의 내용을 직접 복사해 주세요');
+    });
+});
+
+async function restoreBackup(text) {
+  let data;
+  try {
+    data = JSON.parse(text);
+    if (!Array.isArray(data.words)) throw new Error('invalid');
+  } catch {
+    return toast('올바른 백업 데이터가 아니에요');
+  }
+  if (!await ask(`${data.words.length}개 단어로 현재 단어장을 바꿀까요?`)) return;
+  state.words = data.words;
+  state.history = data.history || {};
+  save(); renderList();
+  $('#import-text').value = '';
+  toast('불러왔어요');
+}
+
 $('#import-file').addEventListener('change', async e => {
   const file = e.target.files[0];
   if (!file) return;
-  try {
-    const data = JSON.parse(await file.text());
-    if (!Array.isArray(data.words)) throw new Error('invalid');
-    if (!confirm(`${data.words.length}개 단어로 현재 단어장을 바꿀까요?`)) return;
-    state.words = data.words;
-    state.history = data.history || {};
-    save(); renderList();
-    toast('불러왔어요');
-  } catch {
-    toast('올바른 JSON 파일이 아니에요');
-  } finally {
-    e.target.value = '';
-  }
+  await restoreBackup(await file.text());
+  e.target.value = '';
 });
 
-$('#reset-btn').addEventListener('click', () => {
-  if (!confirm('모든 단어와 학습 기록을 삭제할까요?')) return;
+$('#reset-btn').addEventListener('click', async () => {
+  if (!await ask('모든 단어와 학습 기록을 삭제할까요?')) return;
   state.words = [];
   state.history = {};
   save(); renderList();
