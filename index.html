@@ -1,0 +1,106 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Word Book</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <header class="app-header">
+    <h1>📘 Word Book</h1>
+    <nav class="tabs" role="tablist">
+      <button class="tab active" data-view="list" role="tab">단어장</button>
+      <button class="tab" data-view="cards" role="tab">플래시카드</button>
+      <button class="tab" data-view="quiz" role="tab">퀴즈</button>
+      <button class="tab" data-view="stats" role="tab">통계</button>
+    </nav>
+  </header>
+
+  <main>
+    <!-- 단어장 -->
+    <section id="view-list" class="view active">
+      <form id="word-form" class="card form">
+        <input type="hidden" name="wid">
+        <div class="row">
+          <input name="word" placeholder="영어 단어 (예: apple)" required autocomplete="off">
+          <input name="meaning" placeholder="뜻 (예: 사과)" required autocomplete="off">
+        </div>
+        <input name="example" placeholder="예문 (선택)" autocomplete="off">
+        <div class="row actions">
+          <button type="submit" class="primary" id="form-submit">추가</button>
+          <button type="button" id="form-cancel" class="ghost hidden">취소</button>
+        </div>
+      </form>
+
+      <div class="toolbar">
+        <input id="search" type="search" placeholder="검색…">
+        <select id="filter">
+          <option value="all">전체</option>
+          <option value="due">복습할 단어</option>
+          <option value="learning">학습 중</option>
+          <option value="mastered">외운 단어</option>
+          <option value="starred">★ 중요</option>
+        </select>
+      </div>
+      <p id="list-count" class="muted"></p>
+      <ul id="word-list" class="word-list"></ul>
+
+      <details class="card io">
+        <summary>가져오기 / 내보내기</summary>
+        <p class="muted">한 줄에 하나씩 <code>단어, 뜻, 예문</code> 형식으로 붙여넣으세요.</p>
+        <textarea id="import-text" rows="5" placeholder="apple, 사과, I ate an apple.&#10;book, 책"></textarea>
+        <div class="row actions">
+          <button id="import-btn" class="primary">가져오기</button>
+          <button id="export-btn">JSON 내보내기</button>
+          <label class="button">JSON 불러오기<input id="import-file" type="file" accept="application/json" hidden></label>
+          <button id="reset-btn" class="danger">전체 삭제</button>
+        </div>
+      </details>
+    </section>
+
+    <!-- 플래시카드 -->
+    <section id="view-cards" class="view">
+      <div class="toolbar">
+        <select id="card-mode">
+          <option value="due">복습할 단어만</option>
+          <option value="all">전체 단어</option>
+          <option value="starred">★ 중요 단어</option>
+        </select>
+        <select id="card-dir">
+          <option value="en">영어 → 뜻</option>
+          <option value="ko">뜻 → 영어</option>
+        </select>
+        <button id="card-start" class="primary">시작</button>
+      </div>
+      <div id="card-area"></div>
+    </section>
+
+    <!-- 퀴즈 -->
+    <section id="view-quiz" class="view">
+      <div class="toolbar">
+        <select id="quiz-type">
+          <option value="choice">객관식 (영어 → 뜻)</option>
+          <option value="choice-rev">객관식 (뜻 → 영어)</option>
+          <option value="typing">주관식 (철자 쓰기)</option>
+        </select>
+        <select id="quiz-count">
+          <option value="10">10문제</option>
+          <option value="20">20문제</option>
+          <option value="0">전체</option>
+        </select>
+        <button id="quiz-start" class="primary">시작</button>
+      </div>
+      <div id="quiz-area"></div>
+    </section>
+
+    <!-- 통계 -->
+    <section id="view-stats" class="view">
+      <div id="stats-area"></div>
+    </section>
+  </main>
+
+  <div id="toast" class="toast"></div>
+  <script src="app.js"></script>
+</body>
+</html>
